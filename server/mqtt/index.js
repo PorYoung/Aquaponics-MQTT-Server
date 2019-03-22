@@ -1,9 +1,9 @@
 const md5 = require('md5')
 const authenticate = require('./authenticate')
-const config = Object.assign(require('../../config').MqttConfig, {
+const MqttConfig = Object.assign(require('../../config').MqttConfig, {
   deviceList: []
 })
-config.warningTopic = (deviceId) => {
+MqttConfig.warningTopic = (deviceId) => {
   return 'device' + this.seperator + deviceId + this.seperator + 'warning'
 }
 const request = require('superagent')
@@ -17,14 +17,14 @@ module.exports = {
     })
     MqttServer.on('subscribed', async (topic, client) => {
       let qtt = {
-        topic: 'public' + config.seperator + 'info',
+        topic: 'public' + MqttConfig.seperator + 'info',
         payload: client.user + ' has subscribed topic: ' + topic
       }
       MqttServer.publish(qtt)
     })
     MqttServer.on('unSubscribed', (topic, client) => { //取消订阅
       let qtt = {
-        topic: 'public' + config.seperator + 'info',
+        topic: 'public' + MqttConfig.seperator + 'info',
         payload: client.user + ' has unsubscribed topic: ' + topic
       }
       MqttServer.publish(qtt)
@@ -41,7 +41,7 @@ module.exports = {
         deviceList.push(item._id.toString())
       })
       console.log(deviceList)
-      config.deviceList = deviceList */
+      MqttConfig.deviceList = deviceList */
     })
 
     /**
@@ -55,9 +55,7 @@ module.exports = {
         topic: 'other',
         payload: 'This is server'
       }
-      console.log(config)
-      let t = topic.split(config.seperator)
-      console.log(t.length, t[0])
+      let t = topic.split(MqttConfig.seperator)
       if (t.length == 2 && t[0] == 'public') {
         switch (t[1]) {
           case 'info':
@@ -129,7 +127,7 @@ module.exports = {
                 date: new Date()
               })
               let qtt = {
-                topic: config.warningTopic(deviceId),
+                topic: MqttConfig.warningTopic(deviceId),
                 payload: JSON.stringify(warningQuery.toObject()),
                 qos: 1,
                 retain: true
@@ -140,11 +138,11 @@ module.exports = {
           /**
            * 方案1
           data.deviceId = deviceId
-          let response = await request.post(config.mqttDataAnalysisApi, data)
+          let response = await request.post(MqttConfig.mqttDataAnalysisApi, data)
           let response = JSON.parse(response.text)
           if (response && response.warning) {
             let qtt = {
-              topic: 'device' + config.seperator + deviceId + config.seperator + 'warning',
+              topic: 'device' + MqttConfig.seperator + deviceId + MqttConfig.seperator + 'warning',
               payload: JSON.stringify(response)
             }
             MqttServer.publish(qtt)
