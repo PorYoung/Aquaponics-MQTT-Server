@@ -13,6 +13,6 @@ const config = {
 }
 config.MqttConfig = Object.assign(config.MqttConfig, {
   mqttDataAnalysisApi: config.server_url + '/api/mqttDataAnalysis',
-  seperator: '#'
+  seperator: '/'
 })
 module.exports = config

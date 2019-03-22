@@ -1,11 +1,11 @@
 const md5 = require('md5')
-const config = require('../../config').MqttConfig
+const MqttConfig = require('../../config').MqttConfig
 module.exports = {
   //连接认证
   authenticate: async (client, username, password, callback) => {
     let flag = false
     if (username) {
-      let u = username.split('#')
+      let u = username.split(MqttConfig.seperator)
       if (u[0] == 'user') {
         //用户端认证
         let user = await db.user.findOne({
@@ -29,16 +29,16 @@ module.exports = {
     callback(null, flag)
   },
   //发布校验
-  authenticatePublish: async (client, topic, payload, callback) => {
+  authorizePublish: async (client, topic, payload, callback) => {
     // 授权用户可以发布 device#(device id)#instruction 主题
     let flag = false
-    let t = topic.split('#')
+    let t = topic.split(MqttConfig.seperator)
     if (t[0] == 'public') {
       if (t[1] == 'test') {
         flag = true
       }
     } else {
-      let usp = client.user.split('#')
+      let usp = client.user.split(MqttConfig.seperator)
       let uMark = usp[0]
       let userId = usp[1]
       if (uMark == 'user') {
@@ -51,7 +51,7 @@ module.exports = {
             user: db.ObjectId(userId)
           }).lean()
           if (queryDate) {
-            if (config.userPubAuth.includes(operation))
+            if (MqttConfig.userPubAuth.includes(operation))
               flag = true
           }
         }
@@ -61,7 +61,7 @@ module.exports = {
         let operation = t[2]
         if (tMark == 'device') {
           if (deviceId == userId) {
-            if (config.devicePubAuth.includes(operation)) {
+            if (MqttConfig.devicePubAuth.includes(operation)) {
               flag = true
             }
           }
@@ -71,16 +71,16 @@ module.exports = {
     callback(null, flag)
   },
   //订阅校验
-  authenticateSubscribe: async (client, topic, callback) => {
+  authorizeSubscribe: async (client, topic, callback) => {
     // 授权用户可以订阅 device#(device id)#data|warning 主题
     let flag = false
-    let t = topic.split('#')
+    let t = topic.split(MqttConfig.seperator)
     if (t[0] == 'public') {
-      if (config.publicAuth.includes(t[1])) {
+      if (MqttConfig.publicAuth.includes(t[1])) {
         flag = true
       }
     } else {
-      let usp = client.user.split('#')
+      let usp = client.user.split(MqttConfig.seperator)
       let uMark = usp[0]
       let userId = usp[1]
       if (uMark == 'user') {
@@ -93,7 +93,7 @@ module.exports = {
             user: db.ObjectId(userId)
           }).lean()
           if (queryDate) {
-            if (config.userSubAuth.includes(operation))
+            if (MqttConfig.userSubAuth.includes(operation))
               flag = true
           }
         }
@@ -103,7 +103,7 @@ module.exports = {
         let operation = t[2]
         if (tMark == 'device') {
           if (deviceId == userId) {
-            if (config.deviceSubAuth.includes(operation)) {
+            if (MqttConfig.deviceSubAuth.includes(operation)) {
               flag = true
             }
           }

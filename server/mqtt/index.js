@@ -6,7 +6,7 @@ const MqttConfig = Object.assign(require('../../config').MqttConfig, {
 MqttConfig.warningTopic = (deviceId) => {
   return 'device' + this.seperator + deviceId + this.seperator + 'warning'
 }
-const request = require('superagent')
+// const request = require('superagent')
 module.exports = {
   MqttServerCreate: async (MqttServer) => {
     MqttServer.on('clientConnected', (client) => {
@@ -32,8 +32,8 @@ module.exports = {
     MqttServer.on('ready', async () => {
       console.log('Mqtt Server is running...')
       MqttServer.authenticate = authenticate.authenticate
-      MqttServer.authorizePublish = authenticate.authenticatePublish
-      MqttServer.authorizeSubscribe = authenticate.authenticateSubscribe
+      MqttServer.authorizeSubscribe = authenticate.authorizeSubscribe
+      MqttServer.authorizePublish = authenticate.authorizePublish
       /* // 获取设备列表
       let queryData = await db.device.find({}).lean()
       let deviceList = []

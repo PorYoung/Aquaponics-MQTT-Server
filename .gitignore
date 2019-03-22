@@ -4,6 +4,5 @@ node_modules/
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
-note.md
 .vscode
 test.*

@@ -18,8 +18,8 @@ const app = express()
 /* const options = {
   key: fs.readFileSync('E:/workfiles/Project/ssl/server.key'),
   cert: fs.readFileSync('E:/workfiles/Project/ssl/server.crt')
-} */
-// const httpsServer = https.createServer(options, app)
+}
+const httpsServer = https.createServer(options, app) */
 const ascoltatore = {
   //using ascoltatore
   type: 'mongo',
@@ -37,9 +37,9 @@ const moscaSettings = {
   }
 };
 const MqttServer = new mosca.Server(moscaSettings)
-// MqttServer.attachHttpServer(httpsServer)
-// require('./mqtt').MqttServerCreate(MqttServer)
-// httpsServer.listen(443)
+/* MqttServer.attachHttpServer(httpsServer)
+require('./mqtt').MqttServerCreate(MqttServer)
+httpsServer.listen(443) */
 const httpServer = require('http').createServer(app)
 httpServer.listen(8081)
 MqttServer.attachHttpServer(httpServer)
