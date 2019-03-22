@@ -5,19 +5,20 @@ module.exports = {
   authenticate: async (client, username, password, callback) => {
     let flag = false
     if (username) {
-      if (username.split('#')[0] == 'user') {
+      let u = username.split('#')
+      if (u[0] == 'user') {
         //用户端认证
         let user = await db.user.findOne({
-          _id: db.ObjectId(username)
+          _id: db.ObjectId(u[1])
         }).lean()
         flag = user && password == md5(user.openid)
         if (flag) {
           client.user = username
         }
-      } else if (username.split('#')[0] == 'device') {
+      } else if (u[0] == 'device') {
         //设备端认证
         let device = await db.device.findOne({
-          _id: db.ObjectId(username)
+          _id: db.ObjectId(u[1])
         }).lean()
         flag = device && password == device.password
         if (flag) {
