@@ -57,7 +57,7 @@ module.exports = {
       }
       let t = topic.split(config.seperator)
       if (t.length == 2 && t[0] == 'public') {
-        switch (t[2]) {
+        switch (t[1]) {
           case 'info':
             {
               console.log('Info: ', packet)
