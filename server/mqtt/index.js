@@ -56,6 +56,7 @@ module.exports = {
         payload: 'This is server'
       }
       let t = topic.split(config.seperator)
+      console.log(t)
       if (t.length == 2 && t[0] == 'public') {
         switch (t[1]) {
           case 'info':
