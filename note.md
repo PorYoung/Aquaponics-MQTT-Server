@@ -1,4 +1,4 @@
-# fishV-Server 开发记录
+# Aquaponics-MQTT-Server 开发记录
 
 ## 模块开发
 
@@ -247,7 +247,7 @@ const GroupSchema = new Schema({
 
 ### Mqtt交互实现
 
-分隔符：`\\||@|#`
+分隔符：`/`
 离线消息：`qos`大于`0`，`retain`为`true`
 
 #### 用户端

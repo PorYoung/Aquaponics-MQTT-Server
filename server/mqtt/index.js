@@ -34,14 +34,6 @@ module.exports = {
       MqttServer.authenticate = authenticate.authenticate
       MqttServer.authorizeSubscribe = authenticate.authorizeSubscribe
       MqttServer.authorizePublish = authenticate.authorizePublish
-      /* // 获取设备列表
-      let queryData = await db.device.find({}).lean()
-      let deviceList = []
-      queryData.forEach((item) => {
-        deviceList.push(item._id.toString())
-      })
-      console.log(deviceList)
-      MqttConfig.deviceList = deviceList */
     })
 
     /**

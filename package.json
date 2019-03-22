@@ -1,7 +1,7 @@
 {
-  "name": "fishv-server",
+  "name": "aquaponics-mqtt-server",
   "version": "1.0.0",
-  "description": "fishV server end",
+  "description": "Aquaponics server end",
   "main": "index.js",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1",
