@@ -142,7 +142,7 @@ module.exports = {
           errMsg: -1,
           desc: 'Already Done'
         })
-      } else if (name == null) {
+      } else if (!name) {
         device = await db.device.findOneAndUpdate({
           _id: db.ObjectId(deviceId)
         }, {
