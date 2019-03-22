@@ -1,108 +1,165 @@
+const md5 = require('md5')
+const authenticate = require('./authenticate')
+const config = Object.assign(require('../../config').MqttConfig, {
+  deviceList: []
+})
+config.warningTopic = (deviceId) => {
+  return 'device' + this.seperator + deviceId + this.seperator + 'warning'
+}
+const request = require('superagent')
 module.exports = {
-  MqttServerCreate: (MqttServer) => {
-    const User = {
-      username: 'PorYoung',
-      password: '123456'
-    }
-    //连接认证
-    const authenticate = (client, username, password, callback) => {
-      let flag = (username == User.username && password == User.password)
-      if (flag) client.user = username
-      callback(null, flag)
-    }
-    //发布校验，授权可以发布'/users/user/'或者'/public/'下的主题
-    const authenticatePublish = (client, topic, payload, callback) => {
-      let t = topic.split('/')
-      if (t[1] == 'public') {
-        callback(null, true)
-      } else if (t[1] == 'users') {
-        callback(null, client.user == t[2])
-      } else {
-        callback(null, false)
-      }
-    }
-    //订阅校验，授权可以订阅'/users/user/'或者'/public/'下的主题
-    const authenticateSubscribe = (client, topic, callback) => {
-      let t = topic.split('/')
-      if (t[1] == 'public') {
-        callback(null, true)
-      } else if (t[1] == 'users') {
-        callback(null, client.user == t[2])
-      } else {
-        callback(null, false)
-      }
-    }
-
+  MqttServerCreate: async (MqttServer) => {
     MqttServer.on('clientConnected', (client) => {
       console.log('client connected:', client.id)
     })
-    MqttServer.on('subscribed', (topic, client) => { //订阅
+    MqttServer.on('clientDisconnected', (client) => {
+      console.log('client disconnected', client.id)
+    })
+    MqttServer.on('subscribed', async (topic, client) => {
       let qtt = {
-        topic: '/public/systemInfo',
+        topic: 'public' + config.seperator + 'info',
         payload: client.user + ' has subscribed topic: ' + topic
       }
       MqttServer.publish(qtt)
     })
     MqttServer.on('unSubscribed', (topic, client) => { //取消订阅
-      console.log('unSubscribed: ', topic)
+      let qtt = {
+        topic: 'public' + config.seperator + 'info',
+        payload: client.user + ' has unsubscribed topic: ' + topic
+      }
+      MqttServer.publish(qtt)
     })
-
-
-    MqttServer.on('clientDisConnected', (client) => {
-      console.log('client disconnected', client.id)
-    })
-
-    MqttServer.on('ready', () => {
+    MqttServer.on('ready', async () => {
       console.log('Mqtt Server is running...')
-      MqttServer.authenticate = authenticate
-      MqttServer.authorizePublish = authenticatePublish
-      MqttServer.authorizeSubscribe = authenticateSubscribe
+      MqttServer.authenticate = authenticate.authenticate
+      MqttServer.authorizePublish = authenticate.authenticatePublish
+      MqttServer.authorizeSubscribe = authenticate.authenticateSubscribe
+      /* // 获取设备列表
+      let queryData = await db.device.find({}).lean()
+      let deviceList = []
+      queryData.forEach((item) => {
+        deviceList.push(item._id.toString())
+      })
+      console.log(deviceList)
+      config.deviceList = deviceList */
     })
 
     /**
      * 监听Mqtt主题消息
      */
 
-    MqttServer.on('published', (packet, client) => {
+    MqttServer.on('published', async (packet, client) => {
       let topic = packet.topic
       //Define message(String or Object)
       let qtt = {
         topic: 'other',
         payload: 'This is server'
       }
-      let t = topic.split('/')
-      if (t[1] == 'public') {
+      let t = topic.split(config.seperator)
+      if (t.length == 2 && t[0] == 'public') {
         switch (t[2]) {
-          case 'systemInfo':
+          case 'info':
             {
-              console.log('systemInfo: ', packet)
+              console.log('Info: ', packet)
+              break
+            }
+          case 'test':
+            {
+              console.log('test: ', packet)
               break
             }
         }
-      } else if (t[1] == 'users') {
-        switch (t[3]) {
-          case 'tempdata':
-            {
-              console.log('mqtt-tempdata: ', 'topic =' + topic + ',message = ' + packet.payload.toString())
-              MqttServer.publish(qtt) //推送一个json对象,这个推送自己也会收到
-              let data
-              try {
-                data = JSON.parse(packet.payload.toString())
-              } catch {
-                console.log('JSON.parse throw an error')
+      } else if (t.length == 3 && t[0] == 'device') {
+        if (t[2] == 'data') {
+          // 方案1：向http服务器发送数据检查请求，payload默认json字符串
+          // 方案2：直接处理
+          let deviceId = t[1]
+          let data = null
+          try {
+            data = JSON.parse(packet.payload.toString())
+          } catch (e) {
+            return console.warn(e)
+          }
+          // 方案2
+          let defineQuery = await db.define.findOne({
+            device: db.ObjectId(deviceId)
+          }).lean()
+          if (defineQuery && defineQuery.define) {
+            let define = defineQuery.define
+            let warning = {}
+            let flag = false
+            if (data.hasOwnProperty('date')) {
+              warning.date = data.date
+            }
+            Object.keys(define).forEach((key) => {
+              let {
+                min,
+                max,
+                fMin,
+                fMax
+              } = define
+              if (data.hasOwnProperty(key)) {
+                if (data[key].val <= min) {
+                  warning[key] = {
+                    val: data[key],
+                    stat: -1
+                  }
+                  flag = true
+                } else if (data[key].val >= max) {
+                  warning[key] = {
+                    val: data[key],
+                    stat: -1
+                  }
+                  flag = true
+                }
               }
-              console.log(data)
-              break
+              data[key] = Object.assign(data[key], {
+                min,
+                max,
+                fMin,
+                fMax
+              })
+            })
+            if (flag) {
+              let warningQuery = await db.warning.create({
+                device: db.ObjectId(deviceId),
+                data: warning,
+                date: new Date()
+              })
+              let qtt = {
+                topic: config.warningTopic(deviceId),
+                payload: JSON.stringify(warningQuery.toObject()),
+                qos: 1,
+                retain: true
+              }
+              MqttServer.publish(qtt)
             }
-          case 'other':
-            {
-              console.log('mqtt-other: ', packet.payload.toString())
-              break
+          }
+          /**
+           * 方案1
+          data.deviceId = deviceId
+          let response = await request.post(config.mqttDataAnalysisApi, data)
+          let response = JSON.parse(response.text)
+          if (response && response.warning) {
+            let qtt = {
+              topic: 'device' + config.seperator + deviceId + config.seperator + 'warning',
+              payload: JSON.stringify(response)
             }
-          default:
-            {
-              break
-            }
+            MqttServer.publish(qtt)
+          } */
+        } else if (t[2] == 'instruction') {
+          let deviceId = t[1]
+          let instruction = null
+          try {
+            instruction = JSON.parse(packet.payload.toString())
+          } catch (e) {
+            return console.warn(e)
+          }
+          await db.instruction.create({
+            device: deviceId,
+            instruction: instruction,
+            date: new Date()
+          })
         }
       }
     })

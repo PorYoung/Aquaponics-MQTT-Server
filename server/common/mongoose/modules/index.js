@@ -36,7 +36,8 @@ const DataSchema = new Schema({
     device: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'device'
-    }
+    },
+    data: Object
 })
 const WarningSchema = new Schema({
     date: Date,
@@ -72,6 +73,26 @@ const GroupSchema = new Schema({
     list: Array,
     name: String
 })
+const DefineSchema = new Schema({
+    device: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'device'
+    },
+    define: Object,
+    date: Date
+})
+const InstructionSchema = new Schema({
+    device: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'device'
+    },
+    instruction: Object,
+    operator: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    date: Date
+})
 
 DataSchema.indexes({
     device: -1,
@@ -92,6 +113,8 @@ const data = mongoose.model('data', DataSchema)
 const warning = mongoose.model('warning', WarningSchema)
 const issue = mongoose.model('issue', IssueSchema)
 const group = mongoose.model('group', GroupSchema)
+const define = mongoose.model('define', DefineSchema)
+const instruction = mongoose.model('instruction', InstructionSchema)
 
 module.exports = {
     ObjectId: mongoose.Types.ObjectId,
@@ -100,5 +123,7 @@ module.exports = {
     data,
     warning,
     issue,
-    group
+    group,
+    define,
+    instruction
 }
