@@ -127,6 +127,11 @@ module.exports = {
               MqttServer.publish(qtt)
             }
           }
+          await db.data.create({
+            data: data,
+            device: db.ObjectId(deviceId),
+            date: data.date || new Date()
+          })
           /**
            * 方案1
           data.deviceId = deviceId
@@ -141,11 +146,42 @@ module.exports = {
           } */
         } else if (t.length == 3 && t[2] == 'instruction') {
           let deviceId = t[1]
-          let instruction = null
-          try {
-            instruction = JSON.parse(packet.payload.toString())
-          } catch (e) {
-            return console.warn(e)
+          let instruction = packet.payload.toString()
+          let device = await db.define.findOne({
+            device: db.ObjectId(deviceId)
+          })
+          if (instruction == '0') {
+            //启动设备
+            await db.define.findOneAndUpdate({
+              device: db.ObjectId(deviceId)
+            }, {
+              $set: {
+                runStatus: {
+                  power: true,
+                  stopUploadAllData: false
+                }
+              }
+            })
+          } else if (instruction == '|1|' && device && device.power) {
+            await db.define.findOneAndUpdate({
+              device: db.ObjectId(deviceId)
+            }, {
+              $set: {
+                runStatus: {
+                  stopUploadAllData: true
+                }
+              }
+            })
+          } else if (instruction == '|2|' && device && device.power) {
+            await db.define.findOneAndUpdate({
+              device: db.ObjectId(deviceId)
+            }, {
+              $set: {
+                runStatus: {
+                  stopUploadAllData: false
+                }
+              }
+            })
           }
           await db.instruction.create({
             device: deviceId,

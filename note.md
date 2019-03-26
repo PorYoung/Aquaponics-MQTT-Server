@@ -41,6 +41,10 @@ const UserSchema = new Schema({
 5. 设备标签
 6. 设备说明
 7. 设备添加人
+8. 设备运行状态[见设备指令]
+   - power
+   - stopUploadAllData
+9. 设备健康状态
 
 ```js
 const DeviceSchema = new Schema({
@@ -58,7 +62,9 @@ const DeviceSchema = new Schema({
     ref: 'user'
   },
   avatarUrl: String,
-  date: Date
+  date: Date,
+  runStatus: Object,
+  rateStatus: Object
 })
 ```
 
@@ -283,6 +289,11 @@ const GroupSchema = new Schema({
 3. 转发处理结果，定义预警的用户将收到预警信息（离线消息）
 
 ##### 存储指令操作
+
+1. `-1`：mqtt连接已断开（仅设备内指令）
+2. `0`：mqtt已连接（用户指令：启动设备)
+3. `|1|`：停止全部采集数据上传
+4. `|2|`：开启上传全部数据
 
 #### 设备端
 
