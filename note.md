@@ -2,6 +2,8 @@
 
 ## 模块开发
 
+Arduino等其他开发记录文档参阅[项目网站 blog.SmartAq.cn](blog.SmartAq.cn)
+
 ### Mqttm服务器与Express.js整合测试
 
 通过！
