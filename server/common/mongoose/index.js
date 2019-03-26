@@ -29,6 +29,8 @@ const db = {
     warning: Modules.warning,
     issue: Modules.issue,
     group: Modules.group,
+    define: Modules.define,
+    instruction: Modules.instruction,
     findByPagination
 }
 module.exports = db

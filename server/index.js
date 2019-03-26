@@ -17,7 +17,7 @@ const app = express()
 const MqttServer = new mosca.Server(config.moscaSettings)
 
 // HTTPS OR HTTP
-if (config.ssl.enable) {
+if (config.ssl.enable === true) {
   const fs = require('fs')
   const https = require('https')
   const options = {
@@ -27,7 +27,19 @@ if (config.ssl.enable) {
   const httpsServer = https.createServer(options, app)
   httpsServer.listen(443)
   MqttServer.attachHttpServer(httpsServer)
-} else {
+} else if (config.ssl.enable == 'all') {
+  const fs = require('fs')
+  const https = require('https')
+  const options = {
+    key: fs.readFileSync(config.ssl.key),
+    cert: fs.readFileSync(config.ssl.cert)
+  }
+  const httpsServer = https.createServer(options, app)
+  httpsServer.listen(443)
+  MqttServer.attachHttpServer(httpsServer)
+  const httpServer = require('http').createServer(app)
+  httpServer.listen(8081)
+} else if (config.ssl.enable === false) {
   const httpServer = require('http').createServer(app)
   httpServer.listen(8081)
   MqttServer.attachHttpServer(httpServer)

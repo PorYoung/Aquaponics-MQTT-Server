@@ -139,7 +139,7 @@ module.exports = {
             }
             MqttServer.publish(qtt)
           } */
-        } else if (t[2] == 'instruction') {
+        } else if (t.length == 3 && t[2] == 'instruction') {
           let deviceId = t[1]
           let instruction = null
           try {
