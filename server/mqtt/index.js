@@ -1,10 +1,10 @@
 const md5 = require('md5')
 const authenticate = require('./authenticate')
 const MqttConfig = Object.assign(require('../../config').MqttConfig, {
-  deviceList: []
+  deviceList: [],
 })
 MqttConfig.warningTopic = (deviceId) => {
-  return 'device' + this.seperator + deviceId + this.seperator + 'warning'
+  return 'device' + MqttConfig.seperator + deviceId + MqttConfig.seperator + 'warning'
 }
 // const request = require('superagent')
 module.exports = {
@@ -41,6 +41,7 @@ module.exports = {
      */
 
     MqttServer.on('published', async (packet, client) => {
+      let serverDate = new Date()
       let topic = packet.topic
       //Define message(String or Object)
       let qtt = {
@@ -52,12 +53,12 @@ module.exports = {
         switch (t[1]) {
           case 'info':
             {
-              console.log('Info: ', packet)
+              // console.log('Info: ', packet)
               break
             }
           case 'test':
             {
-              console.log('test: ', packet)
+              // console.log('test: ', packet)
               break
             }
         }
@@ -78,60 +79,61 @@ module.exports = {
           }).lean()
           if (defineQuery && defineQuery.define) {
             let define = defineQuery.define
-            let warning = {}
             let flag = false
-            if (data.hasOwnProperty('date')) {
-              warning.date = data.date
-            }
             Object.keys(define).forEach((key) => {
               let {
                 min,
                 max,
                 fMin,
                 fMax
-              } = define
+              } = define[key]
+              let stat = 0
               if (data.hasOwnProperty(key)) {
-                if (data[key].val <= min) {
-                  warning[key] = {
-                    val: data[key],
-                    stat: -1
-                  }
+                let val = data[key]
+                if (val <= min) {
+                  stat = -2
                   flag = true
-                } else if (data[key].val >= max) {
-                  warning[key] = {
-                    val: data[key],
-                    stat: -1
-                  }
+                } else if (val >= max) {
+                  stat = 2
                   flag = true
+                } else if (val > fMax) {
+                  stat = 1
+                } else if (val < fMin) {
+                  stat = -1
                 }
               }
-              data[key] = Object.assign(data[key], {
+              data[key] = Object.assign({
                 min,
                 max,
                 fMin,
-                fMax
+                fMax,
+                stat,
+                val: Number(data[key]) || 0
               })
             })
             if (flag) {
-              let warningQuery = await db.warning.create({
+              let dataQuery = await db.data.create({
+                data: data,
                 device: db.ObjectId(deviceId),
-                data: warning,
-                date: new Date()
+                date: data.date || serverDate,
+                warning: true
               })
               let qtt = {
                 topic: MqttConfig.warningTopic(deviceId),
-                payload: JSON.stringify(warningQuery.toObject()),
+                payload: JSON.stringify(dataQuery.toObject()),
                 qos: 1,
                 retain: true
               }
               MqttServer.publish(qtt)
+            } else {
+              await db.data.create({
+                data: data,
+                device: db.ObjectId(deviceId),
+                date: data.date || serverDate
+              })
             }
           }
-          await db.data.create({
-            data: data,
-            device: db.ObjectId(deviceId),
-            date: data.date || new Date()
-          })
+
           /**
            * 方案1
           data.deviceId = deviceId
@@ -186,7 +188,7 @@ module.exports = {
           await db.instruction.create({
             device: deviceId,
             instruction: instruction,
-            date: new Date()
+            date: serverDate
           })
         }
       }

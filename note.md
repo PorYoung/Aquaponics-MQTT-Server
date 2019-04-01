@@ -4,7 +4,7 @@
 
 Arduino等其他开发记录文档参阅[项目网站 blog.SmartAq.cn](blog.SmartAq.cn)
 
-### Mqttm服务器与Express.js整合测试
+### Mqtt服务器与Express.js整合测试
 
 通过！
 
@@ -46,6 +46,7 @@ const UserSchema = new Schema({
 8. 设备运行状态[见设备指令]
    - power
    - stopUploadAllData
+   - collectInterval
 9. 设备健康状态
 
 ```js
@@ -76,6 +77,8 @@ const DeviceSchema = new Schema({
 2. 各项数据指标
 3. 采集时间
 4. 所属设备ID
+5. {++是否异常++}
+6. {++问题备注id++}
 
 ```js
 const DataSchema = new Schema({
@@ -83,23 +86,42 @@ const DataSchema = new Schema({
   date: Date,
   data: {
     index1: {
-    val,min,max,fMax,fMin
+    val,min,max,fMax,fMin,
+    stat: ，0最适范围内，1略高于最适，-1略低于最适，2大于最大值，-2小于最小值
   },
     index2,...
   },
   device: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'device'
+  },
+  warning: Boolean,
+  issue: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'issue'
   }
 })
 ```
+
+指标：
+水中温度：`TH2O`
+酸碱度：`PHH2O`
+总溶解固体：`TDS`
+氧化还原电位：`ORP`
+水位线：`LEVEL`
+空气温度：`TAIR`
+光照强度：`LIGHT`
+土壤湿度：`RHSUB`
+空气湿度：`RHAIR`
 
 #### 指标定义
 
 1. ID
 2. 所属设备`_id`
 3. 各指标定义（最大、最小、最适最小、最适最大、说明）
-4. 更新时间
+4. 修改人
+5. 更新时间
+6. 是否失效
 
 ```js
 const DefineSchema = new Schema({
@@ -110,15 +132,23 @@ const DefineSchema = new Schema({
     min,max,fMax,fMin,description
   },
     index2,...
-  }
+  },
   device: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'device'
+  },
+  whoSet: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'user'
+  },
+  expired: {
+    type: Boolean,
+    default: false
   }
 })
 ```
 
-#### 预警记录表
+#### {--预警记录表--}
 
 1. 预警记录ID
 2. 出现预警数据ID
@@ -132,7 +162,11 @@ const WarningSchema = new Schema({
   _id: default,
   date: Date,
   warning:{
-    index1,index2,...
+    index1:{
+      val,
+      stat: 2大于最大值，-2小于最小值
+    }
+    ,index2,...
   },
   device: {
     type: mongoose.Schema.Types.ObjectId,
@@ -153,7 +187,7 @@ const WarningSchema = new Schema({
 3. 记录设备ID
 4. 记录内容
 5. 记录时间
-6. 所选的预警记录ID
+6. {--所选的预警记录ID--}
 7. 所选的数据ID
 
 ```js
@@ -169,8 +203,10 @@ const IssueSchema = new Schema({
   },
   note: String,
   date: Date,
-  data: Array,
-  warning: Array
+  data: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'data'
+  }
 })
 ```
 
@@ -229,7 +265,7 @@ const GroupSchema = new Schema({
 
 #### 设备管理
 
-1. 增加一套设备
+1. 增加一套设备(管理员)
    - Api地址：`/api/addADevice`
    - `post`
    - 请求参数：
@@ -249,9 +285,42 @@ const GroupSchema = new Schema({
       - 请求参数：
         - 当前用户`_id`:`user_id`
         - 当前用户`signStr`
-        - 页码`page`
+        - 页码`page` (-1获取全部)
    2. 普通用户
    3. 高级用户
+3. 绑定设备
+   - Api：`/api/bindDevice`
+   - 请求参数：
+     - 设备id:`deviceId`
+     - 用户id:`user_id`
+     - 设备标签:`tag`
+     - 设备名:`name`
+   - 一个设备只能绑定一个用户，重复绑定会覆盖之前用户信息
+4. 取消绑定设备
+   - Api地址：`/api/unbindDevice`
+   - 请求参数：
+     - 设备id:`deviceId`
+     - 设备密码:`password`
+5. 删除设备(管理员)
+   - Api：`/api/removeDevice`
+   - 请求参数
+     - 设备id:`deviceId`
+
+#### 数据查询
+
+1. 获取一段时间数据
+   - Api:`/api/getDeviceData`
+   - 请求参数
+     - 设备id:`deviceId`
+     - 起始时间:`start`(`Date`)
+     - 截止时间:`stop`(`Date`)
+     - 获取记录数:`count`
+   - 根据需求上传不同参数：
+     - 获取`start`至`stop`间`count`条靠近`stop`的逆序数据
+     - 获取`start`开始`count`条正序数据
+     - 获取`start`至`stop`间所有正序数据
+     - 获取至今为止`count`条逆序数据
+     - 获取至今为止全部正序数据
 
 ### Mqtt交互实现
 
@@ -260,15 +329,15 @@ const GroupSchema = new Schema({
 
 #### 用户端
 
-1. 用户名：用户`user#_id`
+1. 用户名：用户`user/_id`
 2. 密码：用户`md5(openid)`
-3. 订阅设备实时数据，订阅主题：`device#`+设备号+`#data`
-4. 订阅服务器预警信息，订阅主题：`device#`+设备号+`#warning`
-5. 发布设备控制指令，发布主题：`device#`+设备号+`#instruction`，离线消息
+3. 订阅设备实时数据，订阅主题：`device/`+设备号+`/data`
+4. 订阅服务器预警信息，订阅主题：`device/`+设备号+`/warning`
+5. 发布设备控制指令，发布主题：`device/`+设备号+`/instruction`，离线消息
 
 #### 服务器端
 
-1. 订阅所有设备实时数据，订阅主题：`device#`+设备号+`#data`
+1. 订阅所有设备实时数据，订阅主题：`device/`+设备号+`/data`
    - 数据格式Json字符串：`"{"a":"123"}"`
    - 水温：T_H2O
    - 酸碱度：PH_H2O
@@ -279,10 +348,10 @@ const GroupSchema = new Schema({
    - 光照强度：Light
    - 土壤湿度：RHSubstrate
    - 空气湿度：RHAir
-2. 订阅用户的控制指令，订阅主题：`device`+设备号+`#instruction`
-3. 发布预警信息，发布主题：`device`+设备号+`#warning`，离线消息
-4. 发布参数调整信息，发布主题：`device`+设备号+`#adjust`，离线消息
-5. 发布设备控制指令（主动式），发布主题：`device`+设备号+`#instruction`，离线消息
+2. 订阅用户的控制指令，订阅主题：`device/`+设备号+`/instruction`
+3. 发布预警信息，发布主题：`device/`+设备号+`/warning`，离线消息
+4. 发布参数调整信息，发布主题：`device/`+设备号+`/adjust`，离线消息
+5. 发布设备控制指令（主动式），发布主题：`device/`+设备号+`/instruction`，离线消息
 
 ##### 发布预警信息
 
@@ -294,15 +363,16 @@ const GroupSchema = new Schema({
 
 1. `-1`：mqtt连接已断开（仅设备内指令）
 2. `0`：mqtt已连接（用户指令：启动设备)
-3. `|1|`：停止全部采集数据上传
-4. `|2|`：开启上传全部数据
+3. `|1|1|`：停止全部采集数据上传
+4. `|1|2|`：开启上传全部数据
+5. `|1|3|time|`：设置采集数据间隔时间（1~10min）
 
 #### 设备端
 
-1. 用户名：设备`device#_id`
+1. 用户名：设备`device/_id`
 2. 密码：设备密码`password`
-3. 订阅所有控制指令，订阅主题：`device`+设备号+`#instruction`
-4. 发布实时数据，发布主题：`device#`+设备号+`#data`
+3. 订阅所有控制指令，订阅主题：`device/`+设备号+`/instruction`
+4. 发布实时数据，发布主题：`device/`+设备号+`/data`
 
 ##### 数据上传
 
@@ -342,6 +412,10 @@ wx.request({
 1. 使用本地https服务器调试会报错
 2. 后台返回json数据此时需要手动解析
 
+#### js深拷贝和浅拷贝问题
+
+Js默认浅拷贝，深拷贝的两种方法：1.递归；2.JSON.stringfy和JSON.parse
+
 ### MQTT
 
 1. `mqtt`的`topic`中的符号
@@ -367,45 +441,3 @@ wx.request({
    1. 时间间隔：1s
    2. 数据内容：所有指标
 2. 指令接收
-
-## 代码回收站
-
-```js
-/* if (config.deviceList.includes(t[3])) {
-    console.log('listened!')
-    let device = await db.device.findOne({
-      _id: db.ObjectId(t[3])
-    }).lean()
-    console.log(device)
-    let qtt = {
-      topic: topic + '/serverInfo',
-      payload: 'This is server | ' + device.manager
-    }
-    console.log(qtt)
-    MqttServer.publish(qtt)
-  } */
-  /* switch (t[3]) {
-    case 'tempdata':
-      {
-        console.log('mqtt-tempdata: ', 'topic =' + topic + ',message = ' + packet.payload.toString())
-        MqttServer.publish(qtt) //推送一个json对象,这个推送自己也会收到
-        let data
-        try {
-          data = JSON.parse(packet.payload.toString())
-        } catch {
-          console.log('JSON.parse throw an error')
-        }
-        console.log(data)
-        break
-      }
-    case 'other':
-      {
-        console.log('mqtt-other: ', packet.payload.toString())
-        break
-      }
-    default:
-      {
-        break
-      }
-  } */
-```

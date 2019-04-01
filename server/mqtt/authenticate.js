@@ -46,13 +46,32 @@ module.exports = {
         let deviceId = t[1]
         let operation = t[2]
         if (tMark == 'device') {
-          let queryDate = await db.device.findOne({
-            _id: db.ObjectId(deviceId),
-            user: db.ObjectId(userId)
-          }).lean()
-          if (queryDate) {
-            if (MqttConfig.userPubAuth.includes(operation))
-              flag = true
+          let userQuery = await db.user.findOne({
+            _id: db.ObjectId(userId)
+          })
+          if (userQuery && userQuery.level > 0) {
+            if (userQuery.level == 2) {
+              if (MqttConfig.userPubAuth.includes(operation))
+                flag = true
+            } else if (userQuery.level == 1) {
+              let queryData = await db.device.findOne({
+                _id: db.ObjectId(deviceId),
+                manager: db.ObjectId(userId)
+              }).lean()
+              if (queryData) {
+                if (MqttConfig.userPubAuth.includes(operation))
+                  flag = true
+              }
+            }
+          } else {
+            let queryData = await db.device.findOne({
+              _id: db.ObjectId(deviceId),
+              user: db.ObjectId(userId)
+            })
+            if (queryData) {
+              if (MqttConfig.userPubAuth.includes(operation))
+                flag = true
+            }
           }
         }
       } else if (uMark == 'device') {
@@ -88,13 +107,32 @@ module.exports = {
         let deviceId = t[1]
         let operation = t[2]
         if (tMark == 'device') {
-          let queryDate = await db.device.findOne({
-            _id: db.ObjectId(deviceId),
-            user: db.ObjectId(userId)
-          }).lean()
-          if (queryDate) {
-            if (MqttConfig.userSubAuth.includes(operation))
-              flag = true
+          let userQuery = await db.user.findOne({
+            _id: db.ObjectId(userId)
+          })
+          if (userQuery && userQuery.level > 0) {
+            if (userQuery.level == 2) {
+              if (MqttConfig.userSubAuth.includes(operation))
+                flag = true
+            } else if (userQuery.level == 1) {
+              let queryData = await db.device.findOne({
+                _id: db.ObjectId(deviceId),
+                manager: db.ObjectId(userId)
+              }).lean()
+              if (queryData) {
+                if (MqttConfig.userSubAuth.includes(operation))
+                  flag = true
+              }
+            }
+          } else {
+            let queryData = await db.device.findOne({
+              _id: db.ObjectId(deviceId),
+              user: db.ObjectId(userId)
+            }).lean()
+            if (queryData) {
+              if (MqttConfig.userSubAuth.includes(operation))
+                flag = true
+            }
           }
         }
       } else if (uMark == 'device') {

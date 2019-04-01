@@ -7,12 +7,12 @@ const config = {
   MqttConfig: {
     userPubAuth: ['instruction'],
     devicePubAuth: ['data'],
-    userSubAuth: ['data', 'wraning'],
+    userSubAuth: ['data', 'warning'],
     deviceSubAuth: ['instruction'],
     publicAuth: ['test', 'info']
   },
   ssl: {
-    enable: false,
+    enable: 'false',
     key: 'E:/workfiles/Project/ssl/server.key',
     cert: 'E:/workfiles/Project/ssl/server.crt'
   },

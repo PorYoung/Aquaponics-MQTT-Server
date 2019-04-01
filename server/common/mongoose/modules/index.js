@@ -37,7 +37,15 @@ const DataSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'device'
     },
-    data: Object
+    data: Object,
+    warning: {
+        type: Boolean,
+        default: false
+    },
+    issue: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'issue'
+    }
 })
 const WarningSchema = new Schema({
     date: Date,
@@ -62,8 +70,10 @@ const IssueSchema = new Schema({
     },
     note: String,
     date: Date,
-    data: Array,
-    warning: Array
+    data: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'data'
+    }
 })
 const GroupSchema = new Schema({
     manager: {
@@ -79,7 +89,15 @@ const DefineSchema = new Schema({
         ref: 'device'
     },
     define: Object,
-    date: Date
+    date: Date,
+    whoSet: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    expired: {
+        type: Boolean,
+        default: false
+    }
 })
 const InstructionSchema = new Schema({
     device: {
