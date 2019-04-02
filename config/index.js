@@ -12,7 +12,7 @@ const config = {
     publicAuth: ['test', 'info']
   },
   ssl: {
-    enable: 'false',
+    enable: false,
     key: 'E:/workfiles/Project/ssl/server.key',
     cert: 'E:/workfiles/Project/ssl/server.crt'
   },

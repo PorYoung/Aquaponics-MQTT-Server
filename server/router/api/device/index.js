@@ -11,6 +11,7 @@ deviceRouter
   .post('/getDeviceData', Permission.permissionCheck, Device.getDeviceData)
   .post('/updateIndexDefine', Permission.permissionCheck, Device.updateIndexDefine)
   .post('/changeRunState', Permission.permissionCheck, Device.changeRunState)
+  .post('/becomeManager', Permission.permissionCheck, Device.becomeManager)
   .get('/fetchOwnedDevice', Permission.permissionCheck, Device.fetchOwnedDevice)
   .get('/fetchDeviceInfo', Permission.permissionCheck, Device.fetchDeviceInfo)
   .get('/getIndexDefine', Permission.permissionCheck, Device.getIndexDefine)
