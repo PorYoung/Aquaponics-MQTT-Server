@@ -40,6 +40,10 @@ module.exports = {
         description: description,
         manager: user_id,
         avatarUrl: fileUrlPath,
+        runState: {
+          stopUploadAllData: false,
+          collectInterval: 5
+        },
         date: date
       })
       if (!device) {
@@ -421,6 +425,67 @@ module.exports = {
     return res.send({
       errMsg: -1,
       desc: 'device not exist.'
+    })
+  },
+  changeRunState: async (req, res) => {
+    let {
+      deviceId,
+      code
+    } = req.body
+    if (code == 1) {
+      let stopUploadAllData = req.body.stopUploadAllData
+      let device = await db.device.findOneAndUpdate({
+        _id: db.ObjectId(deviceId)
+      }, {
+        $set: {
+          'runState.stopUploadAllData': stopUploadAllData
+        }
+      })
+      if (device) {
+        return res.send({
+          errMsg: 1
+        })
+      }
+    } else if (code == 2) {
+      let collectInterval = req.body.collectInterval
+      let device = await db.device.findOneAndUpdate({
+        _id: db.ObjectId(deviceId)
+      }, {
+        $set: {
+          'runState.collectInterval': collectInterval
+        }
+      })
+      if (device) {
+        return res.send({
+          errMsg: 1
+        })
+      }
+    }
+    return res.send({
+      errMsg: -1
+    })
+  },
+  becomeManager: async (req, res) => {
+    let {
+      user_id,
+      password
+    } = req.body
+    if (password == 'PorYoung') {
+      let user = await db.user.findOneAndUpdate({
+        _id: db.ObjectId(user_id)
+      }, {
+        $set: {
+          level: 1
+        }
+      })
+      if (user) {
+        return res.send({
+          errMsg: 1
+        })
+      }
+    }
+    return res.send({
+      errMsg: -1
     })
   }
 }
