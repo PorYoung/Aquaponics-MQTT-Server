@@ -379,7 +379,7 @@ module.exports = {
                   '$gte': start
                 }
               }).sort({
-                date: 1
+                date: -1
               }).limit(count).lean()
             }
           } else {
@@ -391,7 +391,7 @@ module.exports = {
                 '$lt': stop
               }
             }).sort({
-              date: 1
+              date: -1
             }).lean()
           }
         } else if (count) {
@@ -408,7 +408,7 @@ module.exports = {
           data = await db.data.find({
             device: db.ObjectId(deviceId)
           }).sort({
-            date: 1
+            date: -1
           }).lean()
         }
         return res.send({
