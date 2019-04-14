@@ -91,10 +91,8 @@ module.exports = {
           if (page = -1) {
             devices = await db.device.find({
               user: db.ObjectId(user._id)
-            }, {
-              sort: {
-                date: -1
-              }
+            }).sort({
+              date: -1
             }).lean()
             break
           }
@@ -108,10 +106,8 @@ module.exports = {
           if (page = -1) {
             devices = await db.device.find({
               manager: db.ObjectId(user._id)
-            }, {
-              sort: {
-                date: -1
-              }
+            }).sort({
+              date: -1
             }).lean()
             break
           }
