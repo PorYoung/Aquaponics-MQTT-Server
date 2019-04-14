@@ -383,8 +383,7 @@ module.exports = {
               }).limit(count).lean()
             }
           } else {
-            start = new Date(start)
-            stop = new Date(stop)
+            stop = stop?new Date(stop):new Date()
             data = await db.data.find({
               device: db.ObjectId(deviceId),
               date: {
