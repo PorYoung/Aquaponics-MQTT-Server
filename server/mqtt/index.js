@@ -75,7 +75,8 @@ module.exports = {
           }
           // 方案2
           let defineQuery = await db.define.findOne({
-            device: db.ObjectId(deviceId)
+            device: db.ObjectId(deviceId),
+            expired: false
           }).lean()
           if (defineQuery && defineQuery.define) {
             let define = defineQuery.define

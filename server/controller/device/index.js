@@ -154,27 +154,27 @@ module.exports = {
         device = await db.device.findOneAndUpdate({
           _id: db.ObjectId(deviceId)
         }, {
-          $set: {
-            user: db.ObjectId(user_id),
-            date: new Date(),
-            tag: tag
-          }
-        }, {
-          new: 1
-        }).lean()
+            $set: {
+              user: db.ObjectId(user_id),
+              date: new Date(),
+              tag: tag
+            }
+          }, {
+            new: 1
+          }).lean()
       } else {
         device = await db.device.findOneAndUpdate({
           _id: db.ObjectId(deviceId)
         }, {
-          $set: {
-            user: db.ObjectId(user_id),
-            date: new Date(),
-            name: name,
-            tag: tag
-          }
-        }, {
-          new: 1
-        }).lean()
+            $set: {
+              user: db.ObjectId(user_id),
+              date: new Date(),
+              name: name,
+              tag: tag
+            }
+          }, {
+            new: 1
+          }).lean()
       }
       return res.send({
         errMsg: 1,
@@ -198,13 +198,13 @@ module.exports = {
       device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-        $set: {
-          user: null,
-          date: new Date()
-        }
-      }, {
-        new: 1
-      }).lean()
+          $set: {
+            user: null,
+            date: new Date()
+          }
+        }, {
+          new: 1
+        }).lean()
       return res.send({
         errMsg: 1,
         device: device
@@ -310,12 +310,12 @@ module.exports = {
     } = req.body
     let date = new Date()
     let defineData = await db.define.findOneAndUpdate({
-      device: db.ObjectId(deviceId)
+      device: db.ObjectId(deviceId), expired: false
     }, {
-      $set: {
-        expired: true
-      }
-    }).lean()
+        $set: {
+          expired: true
+        }
+      }).lean()
     if (defineData && defineData.define) {
       defineData = defineData.define
     } else {
@@ -383,7 +383,7 @@ module.exports = {
               }).limit(count).lean()
             }
           } else {
-            stop = stop?new Date(stop):new Date()
+            stop = stop ? new Date(stop) : new Date()
             data = await db.data.find({
               device: db.ObjectId(deviceId),
               date: {
@@ -432,10 +432,10 @@ module.exports = {
       let device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-        $set: {
-          'runState.stopUploadAllData': stopUploadAllData
-        }
-      })
+          $set: {
+            'runState.stopUploadAllData': stopUploadAllData
+          }
+        })
       if (device) {
         return res.send({
           errMsg: 1
@@ -446,10 +446,10 @@ module.exports = {
       let device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-        $set: {
-          'runState.collectInterval': collectInterval
-        }
-      })
+          $set: {
+            'runState.collectInterval': collectInterval
+          }
+        })
       if (device) {
         return res.send({
           errMsg: 1
@@ -469,10 +469,10 @@ module.exports = {
       let user = await db.user.findOneAndUpdate({
         _id: db.ObjectId(user_id)
       }, {
-        $set: {
-          level: 1
-        }
-      })
+          $set: {
+            level: 1
+          }
+        })
       if (user) {
         return res.send({
           errMsg: 1

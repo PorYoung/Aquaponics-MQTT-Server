@@ -2,8 +2,8 @@ const mosca = require('mosca')
 const config = {
   server_url: 'https://localhost',
   wechat_login_url: `https://api.weixin.qq.com/sns/jscode2session`,
-  wechat_AppID: 'xxx',
-  wechat_AppSecret: 'xxx',
+  wechat_AppID: 'wxdc501806d28dc430',
+  wechat_AppSecret: 'ba554361047bad30781920b7808ccf66',
   MqttConfig: {
     userPubAuth: ['instruction'],
     devicePubAuth: ['data'],
@@ -12,7 +12,7 @@ const config = {
     publicAuth: ['test', 'info']
   },
   ssl: {
-    enable: false,
+    enable: 'all',
     key: 'E:/workfiles/Project/ssl/server.key',
     cert: 'E:/workfiles/Project/ssl/server.crt'
   },
