@@ -1,6 +1,7 @@
-const config = require('../../../config')
+const config = require(`${process.cwd()}/config`)
 const request = require('superagent')
 const md5 = require('md5')
+const { userListCategorize } = require('../../common/init')
 module.exports = {
   wechatSPLogin: async (req, res) => {
     let {
@@ -16,7 +17,7 @@ module.exports = {
         info = JSON.parse(info)
       } catch (e) {
         return res.send({
-          errMsg: 'cannot get openid'
+          errMsg: -2
         })
       }
       if (info.openid) {
@@ -24,9 +25,8 @@ module.exports = {
         let queryData = await db.user.findOne({
           openid: info.openid
         }).lean()
-        let isFirst = false
         if (!userInfo.nickName) {
-          userInfo.nickName = '游客'.concat(md5(info.openid))
+          userInfo.nickName = '用户'.concat(md5(info.openid))
         }
         if (!userInfo.avatarUrl) {
           userInfo.avatarUrl = config.server_url.concat('/static/image/default_avatar.jpg')
@@ -39,9 +39,16 @@ module.exports = {
             avatarUrl: userInfo.avatarUrl
           })
           //return first use flag to start using instruction in small program
-          isFirst = true
+          return res.send({
+            errMsg: 2,
+            _id: queryData._id.toString(),
+            nickName: queryData.nickName,
+            avatarUrl: queryData.avatarUrl,
+            level: queryData.level,
+            list: queryData.list
+          })
         } else if (queryData.nickName != userInfo.nickName || queryData.avatarUrl != userInfo.avatarUrl) {
-          queryData = await db.user.update({
+          queryData = await db.user.findOneAndUpdate({
             openid: info.openid
           }, {
             $set: {
@@ -52,17 +59,20 @@ module.exports = {
             new: true
           })
         }
+        // check user level
+        if (queryData.level == 0) {
+          return res.send({
+            errMsg: -1,
+            _id: queryData._id.toString()
+          })
+        }
         let signStr = md5(info.openid)
-        /* req.session._id = queryData._id
-        req.session.signStr = signStr */
         req.session.user = Object.assign({}, queryData, {
-          signStr: signStr,
-          isFirst: isFirst,
+          signStr: signStr
         })
         req.session.user._id = queryData._id.toString()
         return res.send({
-          errMsg: '1',
-          isFirst: isFirst,
+          errMsg: 1,
           _id: queryData._id.toString(),
           nickName: queryData.nickName,
           avatarUrl: queryData.avatarUrl,
@@ -72,13 +82,146 @@ module.exports = {
         })
       } else {
         return res.send({
-          errMsg: 'cannot get openid'
+          errMsg: -2
         })
       }
     } else {
       return res.send({
-        errMsg: 'no code'
+        errMsg: -3
       })
     }
+  },
+  wechatSPBind: async (req, res) => {
+    let {
+      _id,
+      secret
+    } = req.body
+    if (_id && secret) {
+      let queryData = await db.user.findOne({
+        _id: db.ObjectId(_id)
+      }).lean()
+      if (!queryData) {
+        return res.send({
+          errMsg: -1
+        })
+      }
+      if (secret == config.superManagerCode) {
+        // Bind super manager account
+        await db.user.findOneAndUpdate({
+          _id: db.ObjectId(_id)
+        }, {
+          $set: {
+            level: 1,
+            userManageEnable: true,
+            addDeviceEnable: true,
+            deleteDeviceEnable: true
+          }
+        })
+        return res.send({
+          errMsg: 1
+        })
+      } else if (secret == config.managerCode) {
+        // Bind manager account
+        await db.user.findOneAndUpdate({
+          _id: db.ObjectId(_id)
+        }, {
+          $set: {
+            level: 2,
+            userManageEnable: true,
+            addDeviceEnable: true,
+            deleteDeviceEnable: true
+          }
+        })
+        return res.send({
+          errMsg: 1
+        })
+      }
+      return res.send({
+        errMsg: -2
+      })
+    }
+  },
+  getUserList: async (req, res) => {
+
+  },
+  getUserListCategorized: async (req, res) => {
+    let level = req.session.user.level
+    if (level != 1 && level != 2) {
+      return res.send({
+        errMsg: -1
+      })
+    }
+    await userListCategorize()
+    const asyncRedisClient = asyncRedisClientConnect()
+    let ul = {}
+    for (let i = 0; i < 26; ++i) {
+      let key = String.fromCharCode(65 + i)
+      let ulraw = await asyncRedisClient.lrange(key, 0, -1)
+      ul[key] = ulraw
+    }
+    asyncRedisClient.quit()
+    return res.send({
+      errMsg: 1,
+      ul: ul
+    })
+  },
+  updateUserEnable: async (req, res) => {
+    let { _id, letter, index, level, userManageEnable, addDeviceEnable, deleteDeviceEnable } = req.body
+    if (_id == null || letter == null || index == null) {
+      return res.send({
+        errMsg: -1,
+        desc: 'does not have _id, letter or index'
+      })
+    }
+    let user = null
+    if (level != null) {
+      if (!isNaN(level)) {
+        user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+          $set: { level: level }
+        }, {
+          new: true
+        })
+      }
+    }
+    if (userManageEnable != null) {
+      user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+        $set: {
+          userManageEnable: !!userManageEnable
+        }
+      }, {
+        new: true
+      })
+    }
+    if (addDeviceEnable != null) {
+      user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+        $set: {
+          addDeviceEnable: !!addDeviceEnable
+        }
+      }, {
+        new: true
+      })
+    }
+    if (deleteDeviceEnable != null) {
+      user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+        $set: {
+          deleteDeviceEnable: !!deleteDeviceEnable
+        }
+      }, {
+        new: true
+      })
+    }
+    if (user == null) {
+      return res.send({
+        errMsg: -2,
+        desc: 'Update fail!'
+      })
+    }
+    // update redis
+    const asyncRedisClient = asyncRedisClientConnect()
+    await asyncRedisClient.lset(letter, index, JSON.stringify(user))
+    asyncRedisClient.quit()
+    return res.send({
+      errMsg: 1
+    })
   }
 }

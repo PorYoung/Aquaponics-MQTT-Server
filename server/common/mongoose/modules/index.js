@@ -13,6 +13,18 @@ const UserSchema = new Schema({
     level: {
         type: Number,
         default: 0
+    },
+    userManageEnable: {
+        type: Boolean,
+        default: false
+    },
+    addDeviceEnable: {
+        type: Boolean,
+        default: true
+    },
+    deleteDeviceEnable: {
+        type: Boolean,
+        default: false
     }
 })
 const DeviceSchema = new Schema({
