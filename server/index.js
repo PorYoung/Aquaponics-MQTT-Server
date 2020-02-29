@@ -1,17 +1,21 @@
 const express = require('express')
 const mosca = require('mosca')
-const session = require('express-session')
 const cookieParser = require('cookie-parser')
 const bodyParser = require('body-parser')
 const xmlParser = require('express-xml-bodyparser')
 const router = require('./router')
-const db = require('./common/mongoose') //数据库连接句柄
+// 数据库连接句柄
+const db = require('./common/mongoose')
+// // redis数据库
+const { redisClient, asyncRedisClientConnect } = require('./common/redis')
+// session
+const session = require('express-session')
+let RedisStore = require('connect-redis')(session)
 const config = require('../config')
 // 设置为全局数据库连接句柄
 global.db = db
-/* 初始化 */
-
-/* 初始化结束 */
+global.redisClient = redisClient
+global.asyncRedisClientConnect = asyncRedisClientConnect
 
 const app = express()
 const MqttServer = new mosca.Server(config.moscaSettings)
@@ -52,8 +56,10 @@ app.use(bodyParser.urlencoded({
 }))
 app.use(bodyParser.json())
 app.use(xmlParser())
+
 // cookie、session配置
 app.use(session({
+  store: new RedisStore({ client: redisClient }),
   secret: 'PorYoung',
   cookie: {
     maxAge: 60 * 1000 * 30
@@ -61,6 +67,10 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
 }))
-app.use(router)
 
+app.use(router)
+process.on('uncaughtException', (err) => {
+  console.log('Exit!')
+  redisClient.end(true)
+})
 module.exports = app

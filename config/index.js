@@ -4,6 +4,8 @@ const config = {
   wechat_login_url: `https://api.weixin.qq.com/sns/jscode2session`,
   wechat_AppID: 'wxdc501806d28dc430',
   wechat_AppSecret: 'ba554361047bad30781920b7808ccf66',
+  superManagerCode: 'PorYoung',
+  managerCode: 'AquaponicsIOT',
   MqttConfig: {
     userPubAuth: ['instruction'],
     devicePubAuth: ['data'],
@@ -29,6 +31,22 @@ const config = {
       factory: mosca.persistence.Mongo,
       url: 'mongodb://localhost:27017/mqtt'
     }
+  },
+  mongo: {
+    host: 'localhost',
+    port: '27017',
+    database: 'fishv'
+  },
+  mongoose: {
+    useNewUrlParser: true,
+    useFindAndModify: false,
+    useUnifiedTopology: true,
+    useCreateIndex: true
+  },
+  redis: {
+    host: '127.0.0.1',
+    port: 6379,
+    db: '1'
   }
 }
 config.MqttConfig = Object.assign(config.MqttConfig, {
