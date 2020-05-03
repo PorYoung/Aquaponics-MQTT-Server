@@ -67,18 +67,14 @@ module.exports = {
           })
         }
         let signStr = md5(info.openid)
-        req.session.user = Object.assign({}, queryData, {
+        let user = Object.assign({}, queryData, {
           signStr: signStr
         })
-        req.session.user._id = queryData._id.toString()
+        user._id = queryData._id.toString()
+        req.session.user = user
         return res.send({
           errMsg: 1,
-          _id: queryData._id.toString(),
-          nickName: queryData.nickName,
-          avatarUrl: queryData.avatarUrl,
-          signStr: signStr,
-          level: queryData.level,
-          list: queryData.list
+          user: user
         })
       } else {
         return res.send({
@@ -176,11 +172,24 @@ module.exports = {
     let user = null
     if (level != null) {
       if (!isNaN(level)) {
-        user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
-          $set: { level: level }
-        }, {
-          new: true
-        })
+        if (level == 1 || level == 2) {
+          user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+            $set: {
+              level: level,
+              userManageEnable: true,
+              addDeviceEnable: true,
+              deleteDeviceEnable: true
+            }
+          }, {
+            new: true
+          })
+        } else {
+          user = await db.user.findOneAndUpdate({ _id: db.ObjectId(_id) }, {
+            $set: { level: level }
+          }, {
+            new: true
+          })
+        }
       }
     }
     if (userManageEnable != null) {

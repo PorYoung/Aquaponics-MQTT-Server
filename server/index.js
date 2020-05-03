@@ -67,8 +67,11 @@ app.use(session({
   resave: false,
   saveUninitialized: true,
 }))
-
-app.use(router)
+redisClient.flushdb(async () => {
+  app.use(router)
+  await require('./common/init').userListCategorize()
+  console.log('Redis flush db successs!')
+})
 process.on('uncaughtException', (err) => {
   console.log('Exit!')
   redisClient.end(true)

@@ -49,6 +49,7 @@ module.exports = {
         payload: 'This is server'
       }
       let t = topic.split(MqttConfig.seperator)
+      // public message
       if (t.length == 2 && t[0] == 'public') {
         switch (t[1]) {
           case 'info':
@@ -62,10 +63,11 @@ module.exports = {
               break
             }
         }
-      } else if (t.length == 3 && t[0] == 'device') {
+      }
+      // device message
+      else if (t.length == 3 && t[0] == 'device') {
         if (t[2] == 'data') {
-          // 方案1：向http服务器发送数据检查请求，payload默认json字符串
-          // 方案2：直接处理
+          // Check the received data if should publish a warning message
           let deviceId = t[1]
           let data = null
           try {
@@ -73,7 +75,6 @@ module.exports = {
           } catch (e) {
             return console.warn(e)
           }
-          // 方案2
           let defineQuery = await db.define.findOne({
             device: db.ObjectId(deviceId),
             expired: false
@@ -81,44 +82,72 @@ module.exports = {
           if (defineQuery && defineQuery.define) {
             let define = defineQuery.define
             let flag = false
-            Object.keys(define).forEach((key) => {
+            let isManualData = !!data.isManualData
+            let currentData = {}
+            let manualData = {}
+            define.forEach(item => {
               let {
                 min,
                 max,
-                fMin,
-                fMax
-              } = define[key]
+                wmax,
+                wmin,
+                id
+              } = item
               let stat = 0
-              if (data.hasOwnProperty(key)) {
-                let val = data[key]
-                if (val <= min) {
+              if (data.hasOwnProperty(id)) {
+                let val = data[id]
+                if (val <= min || val >= max) {
                   stat = -2
                   flag = true
-                } else if (val >= max) {
-                  stat = 2
-                  flag = true
-                } else if (val > fMax) {
-                  stat = 1
-                } else if (val < fMin) {
+                } else if (val > wmax || val < wmin) {
                   stat = -1
+                  flag = true
+                }
+              } else {
+                stat = -3
+              }
+              if (!item.manual) {
+                currentData[id] = {
+                  stat,
+                  val: Number(data[id]) || 0
+                }
+              } else {
+                manualData[id] = {
+                  stat,
+                  val: Number(data[id]) || 0
                 }
               }
-              data[key] = Object.assign({
-                min,
-                max,
-                fMin,
-                fMax,
-                stat,
-                val: Number(data[key]) || 0
-              })
             })
-            if (flag) {
-              let dataQuery = await db.data.create({
-                data: data,
+            let dataQuery
+            const asyncRedisClient = asyncRedisClientConnect()
+            if (isManualData) {
+              let refDataID = await asyncRedisClient.hget('latestDataID', deviceId)
+              dataQuery = await db.data.findOneAndUpdate({ _id: refDataID }, {
+                $set: {
+                  manualData: manualData,
+                  device: db.ObjectId(deviceId),
+                  date: data.date || serverDate,
+                  useDefine: defineQuery._id,
+                  warning: flag,
+                  updateBy: data.updateBy,
+                }
+              }, {
+                new: 1,
+                upsert: 1
+              })
+              await asyncRedisClient.hset('latestManualDataID', deviceId, refDataID)
+            } else {
+              dataQuery = await db.data.create({
+                data: currentData,
                 device: db.ObjectId(deviceId),
                 date: data.date || serverDate,
-                warning: true
+                useDefine: defineQuery._id,
+                warning: flag
               })
+              // set the latest data id to redis
+              await asyncRedisClient.hset('latestDataID', deviceId, dataQuery._id.toString())
+            }
+            if (flag) {
               let qtt = {
                 topic: MqttConfig.warningTopic(deviceId),
                 payload: JSON.stringify(dataQuery.toObject()),
@@ -126,28 +155,12 @@ module.exports = {
                 retain: true
               }
               MqttServer.publish(qtt)
-            } else {
-              await db.data.create({
-                data: data,
-                device: db.ObjectId(deviceId),
-                date: data.date || serverDate
-              })
             }
+            asyncRedisClient.quit()
           }
-
-          /**
-           * 方案1
-          data.deviceId = deviceId
-          let response = await request.post(MqttConfig.mqttDataAnalysisApi, data)
-          let response = JSON.parse(response.text)
-          if (response && response.warning) {
-            let qtt = {
-              topic: 'device' + MqttConfig.seperator + deviceId + MqttConfig.seperator + 'warning',
-              payload: JSON.stringify(response)
-            }
-            MqttServer.publish(qtt)
-          } */
-        } else if (t.length == 3 && t[2] == 'instruction') {
+        }
+        // instruction message
+        else if (t.length == 3 && t[2] == 'instruction') {
           let deviceId = t[1]
           let instruction = packet.payload.toString()
           let device = await db.define.findOne({

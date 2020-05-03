@@ -15,5 +15,8 @@ deviceRouter
   .get('/fetchOwnedDevice', Permission.permissionCheck, Device.fetchOwnedDevice)
   .get('/fetchDeviceInfo', Permission.permissionCheck, Device.fetchDeviceInfo)
   .get('/getIndexDefine', Permission.permissionCheck, Device.getIndexDefine)
+  .get('/getDefaultIndexDefine', Permission.permissionCheck, Device.getDefaultIndexDefine)
+  .get('/latestData', Permission.permissionCheck, Device.getLatestData)
+  .get('/latestManualData', Permission.permissionCheck, Device.getLatestManualData)
 
 module.exports = deviceRouter

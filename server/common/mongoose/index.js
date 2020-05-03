@@ -4,10 +4,10 @@ const dbConnetion = require('./connection')
 const Modules = require('./modules')
 
 const findByPagination = async (model, criterion, limit, page) => {
-    const total = await model.countDocuments(criterion);
-    const totalPageNum = parseInt(total / limit);
+    const total = await model.countDocuments(criterion)
+    const totalPageNum = parseInt(total / limit)
     if (page > totalPageNum) {
-        return null;
+        return null
     }
     const start = limit * page;
     const queryArr = await model

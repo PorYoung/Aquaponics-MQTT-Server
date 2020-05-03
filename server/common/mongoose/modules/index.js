@@ -27,7 +27,7 @@ const UserSchema = new Schema({
         default: false
     }
 })
-const DeviceSchema = new Schema({
+/* const DeviceSchema = new Schema({
     password: String,
     user: {
         type: mongoose.Schema.Types.ObjectId,
@@ -42,6 +42,25 @@ const DeviceSchema = new Schema({
     },
     avatarUrl: String,
     date: Date
+}) */
+const DeviceSchema = new Schema({
+    password: String,
+    name: String,
+    tag: String,
+    description: String,
+    creater: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    users: [{
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    }],
+    avatarUrl: String,
+    date: Date,
+    runState: {
+
+    }
 })
 const DataSchema = new Schema({
     date: Date,
@@ -50,6 +69,11 @@ const DataSchema = new Schema({
         ref: 'device'
     },
     data: Object,
+    manualData: Object,
+    updateBy: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
     warning: {
         type: Boolean,
         default: false
@@ -100,7 +124,11 @@ const DefineSchema = new Schema({
         type: mongoose.Schema.Types.ObjectId,
         ref: 'device'
     },
-    define: Object,
+    define: Array,
+    refDefine: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'dfdefine'
+    },
     date: Date,
     whoSet: {
         type: mongoose.Schema.Types.ObjectId,
@@ -109,6 +137,19 @@ const DefineSchema = new Schema({
     expired: {
         type: Boolean,
         default: false
+    }
+})
+const defaultDefineSchema = new Schema({
+    whoSet: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'user'
+    },
+    define: Array,
+    date: Date,
+    usedCount: {
+        type: Number,
+        default: 0,
+        min: 0
     }
 })
 const InstructionSchema = new Schema({
@@ -144,6 +185,7 @@ const warning = mongoose.model('warning', WarningSchema)
 const issue = mongoose.model('issue', IssueSchema)
 const group = mongoose.model('group', GroupSchema)
 const define = mongoose.model('define', DefineSchema)
+const dfdefine = mongoose.model('dfdefine', defaultDefineSchema)
 const instruction = mongoose.model('instruction', InstructionSchema)
 
 module.exports = {
@@ -155,5 +197,6 @@ module.exports = {
     issue,
     group,
     define,
+    dfdefine,
     instruction
 }

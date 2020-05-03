@@ -50,27 +50,18 @@ module.exports = {
             _id: db.ObjectId(userId)
           })
           if (userQuery && userQuery.level > 0) {
-            if (userQuery.level == 2) {
+            if (userQuery.level == 1 || userQuery.level == 2) {
               if (MqttConfig.userPubAuth.includes(operation))
                 flag = true
-            } else if (userQuery.level == 1) {
+            } else if (userQuery.level == 3) {
               let queryData = await db.device.findOne({
                 _id: db.ObjectId(deviceId),
-                manager: db.ObjectId(userId)
+                users: db.ObjectId(userId)
               }).lean()
               if (queryData) {
                 if (MqttConfig.userPubAuth.includes(operation))
                   flag = true
               }
-            }
-          } else {
-            let queryData = await db.device.findOne({
-              _id: db.ObjectId(deviceId),
-              user: db.ObjectId(userId)
-            })
-            if (queryData) {
-              if (MqttConfig.userPubAuth.includes(operation))
-                flag = true
             }
           }
         }
@@ -111,27 +102,18 @@ module.exports = {
             _id: db.ObjectId(userId)
           })
           if (userQuery && userQuery.level > 0) {
-            if (userQuery.level == 2) {
+            if (userQuery.level == 1 || userQuery.level == 2) {
               if (MqttConfig.userSubAuth.includes(operation))
                 flag = true
-            } else if (userQuery.level == 1) {
+            } else if (userQuery.level == 3) {
               let queryData = await db.device.findOne({
                 _id: db.ObjectId(deviceId),
-                manager: db.ObjectId(userId)
+                users: db.ObjectId(userId)
               }).lean()
               if (queryData) {
                 if (MqttConfig.userSubAuth.includes(operation))
                   flag = true
               }
-            }
-          } else {
-            let queryData = await db.device.findOne({
-              _id: db.ObjectId(deviceId),
-              user: db.ObjectId(userId)
-            }).lean()
-            if (queryData) {
-              if (MqttConfig.userSubAuth.includes(operation))
-                flag = true
             }
           }
         }

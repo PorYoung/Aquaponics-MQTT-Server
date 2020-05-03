@@ -2,7 +2,9 @@ const formidable = require('formidable')
 const md5 = require('md5')
 const path = require('path')
 const fs = require('fs')
+const config = require(`${process.cwd()}/config`)
 module.exports = {
+  /* Device management */
   addADevice: async (req, res) => {
     let form = new formidable.IncomingForm()
     let fields = {}
@@ -11,7 +13,7 @@ module.exports = {
     let date = new Date()
 
     form.uploadDir = path.join(process.cwd(), '/static/temp')
-    form.maxFileSize = 1 * 1024 * 1024
+    form.maxFileSize = 2 * 1024 * 1024
     form.parse(req)
     form.on('field', (name, value) => {
       fields[name] = value
@@ -38,13 +40,14 @@ module.exports = {
         name: name,
         tag: tag,
         description: description,
-        manager: user_id,
+        creater: user_id,
+        users: [user_id],
         avatarUrl: fileUrlPath,
+        date: date,
         runState: {
           stopUploadAllData: false,
           collectInterval: 5
         },
-        date: date
       })
       if (!device) {
         stat = fs.statSync(filePath)
@@ -57,11 +60,19 @@ module.exports = {
         })
       }
       define = JSON.parse(define)
+      if (define._id) {
+        await db.dfdefine.updataOne({
+          _id: db.ObjectId(define._id)
+        }, {
+          $inc: { 'refCount': 1 }
+        })
+      }
       let defineData = await db.define.create({
-        define: define,
+        define: define.define,
+        refDefine: define._id || null,
         whoSet: user_id,
         date: date,
-        device: device._id.toString()
+        device: device._id
       })
       return res.send({
         errMsg: 1,
@@ -69,6 +80,7 @@ module.exports = {
       })
     })
     form.on('error', (err) => {
+      console.error(err)
       return res.send({
         errMsg: -1,
         desc: 'Server Error!'
@@ -86,37 +98,23 @@ module.exports = {
     let user = req.session.user
     let devices = null
     switch (user.level) {
-      case 0:
+      case 3:
         {
           if (page = -1) {
             devices = await db.device.find({
-              user: db.ObjectId(user._id)
+              users: db.ObjectId(user._id)
             }).sort({
               date: -1
             }).lean()
             break
           }
           devices = await db.findByPagination(db.device, {
-            user: db.ObjectId(user._id)
-          }, 8, page)
-          break
-        }
-      case 1:
-        {
-          if (page = -1) {
-            devices = await db.device.find({
-              manager: db.ObjectId(user._id)
-            }).sort({
-              date: -1
-            }).lean()
-            break
-          }
-          devices = await db.findByPagination(db.device, {
-            manager: db.ObjectId(user._id)
+            users: db.ObjectId(user._id)
           }, 8, page)
           break
         }
       case 2:
+      case 1:
         {
           if (page = -1) {
             devices = await db.device.find({}).sort({
@@ -137,45 +135,19 @@ module.exports = {
     let {
       deviceId,
       password,
-      user_id,
-      tag,
-      name
+      user_id
     } = req.body
     let device = await db.device.findOne({
       _id: db.ObjectId(deviceId)
     }).lean()
     if (device && device.password == password) {
-      if (device.user && device.user.toString() == user_id) {
-        return res.send({
-          errMsg: -1,
-          desc: 'Already Done'
-        })
-      } else if (!name) {
-        device = await db.device.findOneAndUpdate({
-          _id: db.ObjectId(deviceId)
-        }, {
-            $set: {
-              user: db.ObjectId(user_id),
-              date: new Date(),
-              tag: tag
-            }
-          }, {
-            new: 1
-          }).lean()
-      } else {
-        device = await db.device.findOneAndUpdate({
-          _id: db.ObjectId(deviceId)
-        }, {
-            $set: {
-              user: db.ObjectId(user_id),
-              date: new Date(),
-              name: name,
-              tag: tag
-            }
-          }, {
-            new: 1
-          }).lean()
-      }
+      device = await db.device.findOneAndUpdate({
+        _id: db.ObjectId(deviceId)
+      }, {
+        $addToSet: { users: db.ObjectId(user_id) }
+      }, {
+        new: 1
+      }).lean()
       return res.send({
         errMsg: 1,
         device: device
@@ -198,13 +170,12 @@ module.exports = {
       device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-          $set: {
-            user: null,
-            date: new Date()
-          }
-        }, {
-          new: 1
-        }).lean()
+        $pull: {
+          users: db.ObjectId(user_id)
+        }
+      }, {
+        new: 1
+      }).lean()
       return res.send({
         errMsg: 1,
         device: device
@@ -262,39 +233,66 @@ module.exports = {
       desc: 'deviceId is null or cannot find the device'
     })
   },
-
+  /* Device Index Define */
+  getDefaultIndexDefine: async (req, res) => {
+    let { _id } = req.query
+    if (_id != null) {
+      let define = await db.dfdefine.findOne({ _id: db.ObjectId(_id) }).lean()
+      if (define) {
+        return res.send({
+          errMsg: 1,
+          data: define
+        })
+      } else {
+        return res.send({
+          errMsg: -1,
+          desc: 'Cannot find defination.'
+        })
+      }
+    }
+    return res.send({
+      errMsg: 1,
+      data: {
+        define: config.defaultDefine
+      }
+    })
+  },
   getIndexDefine: async (req, res) => {
     let {
       deviceId,
       indexId
     } = req.query
-    let defineData = await db.define.findOne({
-      device: db.ObjectId(deviceId),
-      expired: false
-    }).populate('whoSet', '_id nickName avatarUrl level').lean()
-    if (defineData && defineData.define) {
-      if (indexId) {
-        if (defineData.define[indexId]) {
-          return res.send({
-            errMsg: 1,
-            define: {
-              define: defineData.define[indexId],
-              date: defineData.date,
-              whoSet: defineData.whoSet
-            }
-          })
-        }
-      } else {
+    if (indexId) {
+      let defineData = await db.define.findOne({
+        device: db.ObjectId(deviceId),
+        'define.id': indexId,
+        expired: false
+      }, { 'define.$': 1, date: 1, whoSet: 1 }).populate('whoSet', '_id nickName avatarUrl level').lean()
+      if (defineData && defineData.define) {
         return res.send({
           errMsg: 1,
-          define: {
+          data: {
             define: defineData.define,
             date: defineData.date,
             whoSet: defineData.whoSet
           }
         })
       }
-
+    } else {
+      let defineData = await db.define.findOne({
+        device: db.ObjectId(deviceId),
+        expired: false
+      }).populate('whoSet', '_id nickName avatarUrl level').lean()
+      if (defineData && defineData.define) {
+        return res.send({
+          errMsg: 1,
+          data: {
+            define: defineData.define,
+            date: defineData.date,
+            whoSet: defineData.whoSet
+          }
+        })
+      }
     }
     return res.send({
       errMsg: -1,
@@ -312,10 +310,10 @@ module.exports = {
     let defineData = await db.define.findOneAndUpdate({
       device: db.ObjectId(deviceId), expired: false
     }, {
-        $set: {
-          expired: true
-        }
-      }).lean()
+      $set: {
+        expired: true
+      }
+    }).lean()
     if (defineData && defineData.define) {
       defineData = defineData.define
     } else {
@@ -342,6 +340,7 @@ module.exports = {
       desc: 'Update Failed.'
     })
   },
+  /* Device Data */
   getDeviceData: async (req, res) => {
     let {
       deviceId,
@@ -422,6 +421,59 @@ module.exports = {
       desc: 'device not exist.'
     })
   },
+  getLatestData: async (req, res) => {
+    let { deviceId } = req.query
+    const asyncRedisClient = asyncRedisClientConnect()
+    let dataID = await asyncRedisClient.hget('latestDataID', deviceId)
+    if (!deviceId) {
+      return res.send({
+        errMsg: -1,
+        desc: 'have no this data'
+      })
+    }
+    let query
+    if (!dataID) {
+      query = await db.data.find({ device: deviceId }).sort({ date: -1 }).limit(1).lean()
+      query = query[0]
+      if (query) {
+        asyncRedisClient.hset('latestDataID', deviceId, query._id.toString())
+      }
+    } else {
+      query = await db.data.findOne({ _id: dataID }).lean()
+    }
+    asyncRedisClient.quit()
+    return res.send({
+      errMsg: 1,
+      data: query
+    })
+  },
+  getLatestManualData: async (req, res) => {
+    let { deviceId } = req.query
+    const asyncRedisClient = asyncRedisClientConnect()
+    let dataID = await asyncRedisClient.hget('latestManualDataID', deviceId)
+    if (!deviceId) {
+      return res.send({
+        errMsg: -1,
+        desc: 'have no this data'
+      })
+    }
+    let query
+    if (!dataID) {
+      query = await db.data.find({ device: deviceId, manualData: { $exists: true } }).sort({ date: -1 }).limit(1).lean()
+      query = query[0]
+      if (query) {
+        asyncRedisClient.hset('latestManualDataID', deviceId, query._id.toString())
+      }
+    } else {
+      query = await db.data.findOne({ _id: dataID }).lean()
+    }
+    asyncRedisClient.quit()
+    return res.send({
+      errMsg: 1,
+      data: query
+    })
+
+  },
   changeRunState: async (req, res) => {
     let {
       deviceId,
@@ -432,10 +484,10 @@ module.exports = {
       let device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-          $set: {
-            'runState.stopUploadAllData': stopUploadAllData
-          }
-        })
+        $set: {
+          'runState.stopUploadAllData': stopUploadAllData
+        }
+      })
       if (device) {
         return res.send({
           errMsg: 1
@@ -446,10 +498,10 @@ module.exports = {
       let device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
-          $set: {
-            'runState.collectInterval': collectInterval
-          }
-        })
+        $set: {
+          'runState.collectInterval': collectInterval
+        }
+      })
       if (device) {
         return res.send({
           errMsg: 1
@@ -469,10 +521,10 @@ module.exports = {
       let user = await db.user.findOneAndUpdate({
         _id: db.ObjectId(user_id)
       }, {
-          $set: {
-            level: 1
-          }
-        })
+        $set: {
+          level: 1
+        }
+      })
       if (user) {
         return res.send({
           errMsg: 1
