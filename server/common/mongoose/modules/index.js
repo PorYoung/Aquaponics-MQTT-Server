@@ -27,22 +27,6 @@ const UserSchema = new Schema({
         default: false
     }
 })
-/* const DeviceSchema = new Schema({
-    password: String,
-    user: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-    },
-    name: String,
-    tag: String,
-    description: String,
-    manager: {
-        type: mongoose.Schema.Types.ObjectId,
-        ref: 'user'
-    },
-    avatarUrl: String,
-    date: Date
-}) */
 const DeviceSchema = new Schema({
     password: String,
     name: String,

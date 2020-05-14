@@ -10,6 +10,7 @@ deviceRouter
   .post('/removeDevice', Permission.permissionCheck, Device.removeDevice)
   .post('/getDeviceData', Permission.permissionCheck, Device.getDeviceData)
   .post('/updateIndexDefine', Permission.permissionCheck, Device.updateIndexDefine)
+  .post('/issue', Permission.permissionCheck, Device.updateWarningIssue)
   .post('/changeRunState', Permission.permissionCheck, Device.changeRunState)
   .post('/becomeManager', Permission.permissionCheck, Device.becomeManager)
   .get('/fetchOwnedDevice', Permission.permissionCheck, Device.fetchOwnedDevice)

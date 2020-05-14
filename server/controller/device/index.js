@@ -220,7 +220,7 @@ module.exports = {
     if (deviceId != null) {
       let device = await db.device.findOne({
         _id: db.ObjectId(deviceId)
-      }).populate('user', '_id nickName avatarUrl level').populate('manager', '_id nickName avatarUrl level').lean()
+      }).populate('creater', '_id nickName avatarUrl level').populate('users', '_id nickName avatarUrl level').lean()
       if (device) {
         return res.send({
           errMsg: 1,
@@ -346,75 +346,80 @@ module.exports = {
       deviceId,
       start,
       stop,
-      count
+      count,
+      page,
+      warning
     } = req.body
     let level = req.session.user.level
     let user_id = req.session.user._id
-    let device = await db.device.findOne({
-      _id: db.ObjectId(deviceId)
-    }).lean()
+    let device = null
+    if (level == 1 || level == 2) {
+      device = await db.device.findOne({
+        _id: db.ObjectId(deviceId)
+      }).lean()
+    } else {
+      device = await db.device.findOne({
+        _id: db.ObjectId(deviceId),
+        users: user_id
+      }).lean()
+    }
     if (device) {
-      if (level == 2 || (level == 1 && user_id == device.manager.toString()) || user_id == device.user.toString()) {
-        let data = null
-        count = parseInt(count)
+      let data = null
+      page = parseInt(page)
+      count = parseInt(count)
+      let total = count
+      if (page === -1) {
         if (start) {
-          start = new Date(start)
-          if (count) {
-            if (stop) {
-              stop = new Date(stop)
-              data = await db.data.find({
-                device: db.ObjectId(deviceId),
-                date: {
-                  '$gte': start,
-                  '$lt': stop
-                }
-              }).sort({
-                date: -1
-              }).limit(count).lean()
-            } else {
-              data = await db.data.find({
-                device: db.ObjectId(deviceId),
-                date: {
-                  '$gte': start
-                }
-              }).sort({
-                date: -1
-              }).limit(count).lean()
-            }
-          } else {
-            stop = stop ? new Date(stop) : new Date()
-            data = await db.data.find({
-              device: db.ObjectId(deviceId),
-              date: {
-                '$gte': start,
-                '$lt': stop
-              }
-            }).sort({
-              date: -1
-            }).lean()
-          }
-        } else if (count) {
-          stop = new Date()
-          data = await db.data.find({
+          let qs = {
             device: db.ObjectId(deviceId),
             date: {
+              '$gte': start,
               '$lt': stop
             }
-          }).sort({
+          }
+          !!warning && (qs['warning'] = true)
+          data = await db.data.find(qs).sort({
             date: -1
-          }).limit(count).lean()
+          }).limit(count).populate('issue', '_id note date user').lean()
         } else {
-          data = await db.data.find({
+          // get all data
+          let qs = {
             device: db.ObjectId(deviceId)
-          }).sort({
+          }
+          !!warning && (qs['warning'] = true)
+          data = await db.data.find(qs).sort({
             date: -1
-          }).lean()
+          }).populate('issue', '_id note date user').lean()
         }
-        return res.send({
-          errMsg: 1,
-          data: data
-        })
+      } else {
+        let qs = { device: db.ObjectId(deviceId) }
+        !!warning && (qs['warning'] = true)
+        if (start) {
+          if (page == 0) {
+            total = await db.data.countDocuments(qs)
+          }
+          count = count || config.pagination
+          qs.date = {
+            '$gte': start,
+            '$lt': stop
+          }
+          data = await db.data.find(qs).sort({
+            date: -1
+          }).skip(page * count).limit(count).populate('issue', '_id note date user').lean()
+        } else {
+          if (page == 0) {
+            total = await db.data.countDocuments(qs)
+          }
+          data = await db.data.find(qs).sort({
+            date: -1
+          }).skip(page * count).limit(count).populate('issue', '_id note date user').lean()
+        }
       }
+      return res.send({
+        errMsg: 1,
+        data: data,
+        total: total
+      })
     }
     return res.send({
       errMsg: -1,
@@ -474,39 +479,70 @@ module.exports = {
     })
 
   },
+  updateWarningIssue: async (req, res) => {
+    let { user_id, warningId, issueId, note } = req.body
+    let result = null
+    if (!!issueId) {
+      result = await db.issue.findOneAndUpdate({ _id: issueId }, {
+        $set: {
+          note: note,
+          user: user_id,
+          date: new Date()
+        }
+      })
+    } else {
+      result = await db.issue.create({
+        user: user_id,
+        data: warningId,
+        note: note,
+        date: new Date()
+      })
+      await db.data.findOneAndUpdate({ _id: warningId }, {
+        $set: {
+          issue: result._id
+        }
+      })
+    }
+    if (result) {
+      return res.send({
+        errMsg: 1
+      })
+    } else {
+      return res.send({
+        errMsg: -1,
+        desc: 'have no result'
+      })
+    }
+  },
   changeRunState: async (req, res) => {
     let {
       deviceId,
       code
     } = req.body
+    let device
     if (code == 1) {
       let stopUploadAllData = req.body.stopUploadAllData
-      let device = await db.device.findOneAndUpdate({
+      device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
         $set: {
           'runState.stopUploadAllData': stopUploadAllData
         }
       })
-      if (device) {
-        return res.send({
-          errMsg: 1
-        })
-      }
     } else if (code == 2) {
       let collectInterval = req.body.collectInterval
-      let device = await db.device.findOneAndUpdate({
+      device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
         $set: {
           'runState.collectInterval': collectInterval
         }
       })
-      if (device) {
-        return res.send({
-          errMsg: 1
-        })
-      }
+    }
+    if (device) {
+      return res.send({
+        errMsg: 1
+      })
     }
     return res.send({
       errMsg: -1

@@ -271,7 +271,8 @@ const config = {
     min: 0,
     desc: '',
     manual: false
-  }]
+  }],
+  pagination: 8
 }
 config.MqttConfig = Object.assign(config.MqttConfig, {
   mqttDataAnalysisApi: config.server_url + '/api/mqttDataAnalysis',
