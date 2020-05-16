@@ -40,14 +40,7 @@ module.exports = {
           })
           addToUserList(queryData)
           //return first use flag to start using instruction in small program
-          return res.send({
-            errMsg: 2,
-            _id: queryData._id.toString(),
-            nickName: queryData.nickName,
-            avatarUrl: queryData.avatarUrl,
-            level: queryData.level,
-            list: queryData.list
-          })
+          return res.send(Object.assign({ errMsg: 2 }, queryData))
         } else if (queryData.nickName != userInfo.nickName || queryData.avatarUrl != userInfo.avatarUrl) {
           queryData = await db.user.findOneAndUpdate({
             openid: info.openid
@@ -58,7 +51,7 @@ module.exports = {
             }
           }, {
             new: true
-          })
+          }).lean()
         }
         // check user level
         if (queryData.level == 0) {
