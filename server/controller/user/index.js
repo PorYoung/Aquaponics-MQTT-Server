@@ -1,7 +1,7 @@
 const config = require(`${process.cwd()}/config`)
 const request = require('superagent')
 const md5 = require('md5')
-const { userListCategorize } = require('../../common/init')
+const { userListCategorize, addToUserList } = require('../../common/init')
 module.exports = {
   wechatSPLogin: async (req, res) => {
     let {
@@ -38,6 +38,7 @@ module.exports = {
             nickName: userInfo.nickName,
             avatarUrl: userInfo.avatarUrl
           })
+          addToUserList(queryData)
           //return first use flag to start using instruction in small program
           return res.send({
             errMsg: 2,

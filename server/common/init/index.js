@@ -20,5 +20,11 @@ module.exports = {
             console.info('UserList has been categorized!')
         }
         asyncRedisClient.quit()
+    },
+    addToUserList: async (user) => {
+        const asyncRedisClient = asyncRedisClientConnect()
+        let fl = pinyin(user.nickName, { style: pinyin.STYLE_FIRST_LETTER })[0][0].toUpperCase()[0]
+        await asyncRedisClient.rpush(fl, JSON.stringify(user))
+        asyncRedisClient.quit()
     }
 }
