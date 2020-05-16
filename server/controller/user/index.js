@@ -247,7 +247,7 @@ module.exports = {
   permissionApplyRefuse: async (req, res) => {
     let { user_id } = req.query
     let user = await db.user.findOneAndUpdate({ _id: user_id }, {
-      $set: {
+      $unset: {
         apply: null
       }
     })
