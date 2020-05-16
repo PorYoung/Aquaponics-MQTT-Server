@@ -14,5 +14,7 @@ userRouter
   .post('/wechatSPBind', User.wechatSPBind)
   .get('/getUserList', Permission.permissionCheck, User.getUserListCategorized)
   .post('/updateUserEnable', Permission.permissionCheck, User.updateUserEnable)
+  .post('permissionApply', Permission.permissionCheck, User.permissionApply)
+  .get('permissionApply', Permission.permissionCheck, User.permissionApplyRefuse)
 
 module.exports = userRouter

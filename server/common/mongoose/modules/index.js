@@ -25,6 +25,9 @@ const UserSchema = new Schema({
     deleteDeviceEnable: {
         type: Boolean,
         default: false
+    },
+    apply: {
+        type: Object
     }
 })
 const DeviceSchema = new Schema({

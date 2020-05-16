@@ -233,5 +233,36 @@ module.exports = {
     return res.send({
       errMsg: 1
     })
+  },
+  permissionApply: async (req, res) => {
+    let { target, user_id } = req.body
+    let user = await db.user.findOneAndUpdate({ _id: user_id }, {
+      $set: {
+        apply: {
+          [target]: true,
+          date: new Date()
+        }
+      }
+    })
+    if (user) {
+      return res.send({
+        errMsg: 1
+      })
+    }
+    return res.send({ errMsg: -1 })
+  },
+  permissionApplyRefuse: async (req, res) => {
+    let { user_id } = req.query
+    let user = await db.user.findOneAndUpdate({ _id: user_id }, {
+      $set: {
+        apply: null
+      }
+    })
+    if (user) {
+      return res.send({
+        errMsg: 1
+      })
+    }
+    return res.send({ errMsg: -1 })
   }
 }
