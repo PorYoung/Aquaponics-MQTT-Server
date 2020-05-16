@@ -2,6 +2,7 @@ const config = require(`${process.cwd()}/config`)
 const request = require('superagent')
 const md5 = require('md5')
 const { userListCategorize, addToUserList } = require('../../common/init')
+const pinyin = require('pinyin')
 module.exports = {
   wechatSPLogin: async (req, res) => {
     let {
@@ -236,8 +237,22 @@ module.exports = {
           date: new Date()
         }
       }
-    })
+    }).lean()
     if (user) {
+      // update redis
+      const asyncRedisClient = asyncRedisClientConnect()
+      let letter = pinyin(user.nickName, { style: pinyin.STYLE_FIRST_LETTER })[0][0].toUpperCase()[0]
+      let userlist = asyncRedisClient.lrange(letter, 0, -1)
+      let index = 0
+      for (let i = 0; index < userlist.length; ++i) {
+        let u = JSON.parse(userlist[i])
+        if (u._id == user_id) {
+          index = i
+          break
+        }
+      }
+      await asyncRedisClient.lset(letter, index, JSON.stringify(user))
+      asyncRedisClient.quit()
       return res.send({
         errMsg: 1
       })
@@ -245,13 +260,17 @@ module.exports = {
     return res.send({ errMsg: -1 })
   },
   permissionApplyRefuse: async (req, res) => {
-    let { user_id } = req.query
+    let { user_id, letter, index } = req.query
     let user = await db.user.findOneAndUpdate({ _id: user_id }, {
       $unset: {
         apply: null
       }
-    })
+    }).lean()
     if (user) {
+      // update redis
+      const asyncRedisClient = asyncRedisClientConnect()
+      await asyncRedisClient.lset(letter, index, JSON.stringify(user))
+      asyncRedisClient.quit()
       return res.send({
         errMsg: 1
       })
