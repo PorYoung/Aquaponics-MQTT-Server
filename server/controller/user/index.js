@@ -243,7 +243,7 @@ module.exports = {
       const asyncRedisClient = asyncRedisClientConnect()
       let letter = pinyin(user.nickName, { style: pinyin.STYLE_FIRST_LETTER })[0][0].toUpperCase()[0]
       let userlist = asyncRedisClient.lrange(letter, 0, -1)
-      for (let i = 0; index < userlist.length; ++i) {
+      for (let i = 0; i < userlist.length; ++i) {
         let u = JSON.parse(userlist[i])
         console.log(u._id, user_id)
         if (u._id == user_id) {
