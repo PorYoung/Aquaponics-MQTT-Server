@@ -237,7 +237,7 @@ module.exports = {
           date: new Date()
         }
       }
-    }).lean()
+    }, { new: 1 }).lean()
     if (user) {
       // update redis
       const asyncRedisClient = asyncRedisClientConnect()
@@ -265,7 +265,7 @@ module.exports = {
       $unset: {
         apply: null
       }
-    }).lean()
+    }, { new: 1 }).lean()
     if (user) {
       // update redis
       const asyncRedisClient = asyncRedisClientConnect()
