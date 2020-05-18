@@ -161,12 +161,12 @@ module.exports = {
   unbindDevice: async (req, res) => {
     let {
       deviceId,
-      password
+      user_id
     } = req.body
     let device = await db.device.findOne({
       _id: db.ObjectId(deviceId)
     }).lean()
-    if (device && device.password == password) {
+    if (device) {
       device = await db.device.findOneAndUpdate({
         _id: db.ObjectId(deviceId)
       }, {
